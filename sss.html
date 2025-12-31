@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Wishing Wall</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fonts: Caveat for handwriting, Inter for UI -->
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #2d3748;
+            /* Realistic Brick Wall Pattern */
+            background-image: 
+                linear-gradient(335deg, rgba(255,255,255,0.05) 23px, transparent 23px),
+                linear-gradient(155deg, rgba(255,255,255,0.05) 23px, transparent 23px),
+                linear-gradient(335deg, rgba(255,255,255,0.05) 23px, transparent 23px),
+                linear-gradient(155deg, rgba(255,255,255,0.05) 23px, transparent 23px);
+            background-size: 58px 58px;
+        }
+
+        .handwriting {
+            font-family: 'Caveat', cursive;
+        }
+
+        /* Sticky Note Animations */
+        .sticky-note {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 2px 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .sticky-note:hover {
+            transform: scale(1.05) !important; /* Override inline rotation slightly */
+            box-shadow: 10px 15px 20px rgba(0,0,0,0.4);
+            z-index: 50;
+        }
+
+        /* Realistic Pin */
+        .pin {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #ef4444;
+            box-shadow: inset 2px 2px 2px rgba(255,255,255,0.4), 1px 1px 3px rgba(0,0,0,0.5);
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+        }
+        
+        .pin::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            width: 2px;
+            height: 6px;
+            background: rgba(0,0,0,0.2);
+            transform: translateX(-50%);
+        }
+
+        /* Modal & UI */
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+        }
+        
+        .loader {
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid #ffffff;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1a202c; }
+        ::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #718096; }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col relative text-gray-800">
+
+    <!-- Header -->
+    <header class="bg-gray-900/80 backdrop-blur-md border-b border-white/10 p-4 shadow-lg flex justify-between items-center z-50">
+        <div class="flex items-center gap-3">
+            <div class="bg-gradient-to-br from-yellow-400 to-orange-500 w-10 h-10 rounded-lg flex items-center justify-center shadow-lg transform -rotate-6">
+                <span class="text-xl">✨</span>
+            </div>
+            <div>
+                <h1 class="text-xl md:text-2xl font-bold text-white tracking-wide">
+                    The Public Wall
+                </h1>
+                <p class="text-gray-400 text-xs">One note per person. Make it count.</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-4">
+            <div id="authLoader" class="loader"></div>
+            <button id="addWishBtn" class="hidden bg-yellow-400 hover:bg-yellow-300 text-yellow-900 font-bold py-2 px-4 md:px-6 rounded-full shadow-lg transform transition hover:scale-105 active:scale-95 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                </svg>
+                <span id="btnText">Post Note</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Wall Container -->
+    <main id="wall" class="flex-1 overflow-y-auto p-6 md:p-10 relative">
+        <div id="notesContainer" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-8 pb-32">
+            <!-- Notes will be injected here -->
+        </div>
+        
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden absolute inset-0 flex flex-col items-center justify-center text-white/20 pointer-events-none">
+            <svg class="w-32 h-32 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+            </svg>
+            <p class="text-2xl font-handwriting transform -rotate-2">The wall is empty...</p>
+        </div>
+    </main>
+
+    <!-- Wish Modal -->
+    <div id="modal" class="hidden fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md transform transition-all scale-100 overflow-hidden">
+            <!-- Modal Header -->
+            <div class="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-gray-800">Write a Note</h2>
+                <button id="closeModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <div class="p-6">
+                <!-- Color Picker -->
+                <div class="mb-6">
+                    <label class="block text-gray-500 text-xs font-bold uppercase tracking-wider mb-3">Choose Color</label>
+                    <div class="flex gap-3 justify-center">
+                        <button class="color-btn w-10 h-10 rounded-full shadow-sm ring-2 ring-offset-2 ring-transparent focus:ring-gray-400 transition-all transform hover:scale-110" style="background-color: #fef3c7;" data-color="#fef3c7"></button>
+                        <button class="color-btn w-10 h-10 rounded-full shadow-sm ring-2 ring-offset-2 ring-transparent focus:ring-gray-400 transition-all transform hover:scale-110" style="background-color: #d1fae5;" data-color="#d1fae5"></button>
+                        <button class="color-btn w-10 h-10 rounded-full shadow-sm ring-2 ring-offset-2 ring-transparent focus:ring-gray-400 transition-all transform hover:scale-110" style="background-color: #fee2e2;" data-color="#fee2e2"></button>
+                        <button class="color-btn w-10 h-10 rounded-full shadow-sm ring-2 ring-offset-2 ring-transparent focus:ring-gray-400 transition-all transform hover:scale-110" style="background-color: #dbeafe;" data-color="#dbeafe"></button>
+                        <button class="color-btn w-10 h-10 rounded-full shadow-sm ring-2 ring-offset-2 ring-transparent focus:ring-gray-400 transition-all transform hover:scale-110" style="background-color: #f3e8ff;" data-color="#f3e8ff"></button>
+                    </div>
+                </div>
+
+                <!-- Editor -->
+                <div class="mb-6 relative group">
+                    <div id="previewNote" class="w-full h-48 p-6 shadow-inner rounded-md transition-colors duration-300 relative flex items-center justify-center" style="background-color: #fef3c7;">
+                        <!-- Pin Visual -->
+                        <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 w-3 h-3 rounded-full bg-red-500 shadow-sm z-10"></div>
+                        
+                        <textarea id="wishInput" maxlength="140" class="w-full h-full bg-transparent border-none resize-none focus:ring-0 handwriting text-2xl text-center text-gray-800 placeholder-gray-500/50 leading-relaxed" placeholder="Type your wish here..."></textarea>
+                    </div>
+                    <div class="absolute bottom-2 right-4 text-xs text-gray-500 opacity-50 group-focus-within:opacity-100 transition-opacity"><span id="charCount">0</span>/140</div>
+                </div>
+
+                <button id="postWishBtn" class="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition duration-200 flex justify-center items-center gap-2">
+                    <span>Stick to Wall</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-6 right-6 bg-gray-900 text-white px-6 py-4 rounded-lg shadow-2xl transform translate-y-32 transition-transform duration-300 z-50 flex items-center gap-3">
+        <span class="text-green-400 text-xl">✓</span>
+        <span id="toastMsg">Wish posted successfully!</span>
+    </div>
+
+    <!-- Firebase Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- USER CONFIGURATION START ---
+        // I've inserted your keys here. This file is now ready for GitHub Pages.
+        const firebaseConfig = {
+            apiKey: "AIzaSyAjiUlQRCAc2hZPVCTB6X0FXMWxiD3LFy8",
+            authDomain: "wall-all.firebaseapp.com",
+            projectId: "wall-all",
+            storageBucket: "wall-all.firebasestorage.app",
+            messagingSenderId: "634703239528",
+            appId: "1:634703239528:web:78265770dac8df5de31edd",
+            measurementId: "G-G93Y2D3LNK"
+        };
+        // --- USER CONFIGURATION END ---
+
+        // App ID logic: Use global if in preview, otherwise default to wall-all
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'wall-all-public';
+
+        // Initialize
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // State
+        let currentUser = null;
+        let selectedColor = "#fef3c7";
+        let userHasWish = false;
+
+        // UI References
+        const els = {
+            addBtn: document.getElementById('addWishBtn'),
+            btnText: document.getElementById('btnText'),
+            modal: document.getElementById('modal'),
+            closeModal: document.getElementById('closeModal'),
+            postBtn: document.getElementById('postWishBtn'),
+            input: document.getElementById('wishInput'),
+            colors: document.querySelectorAll('.color-btn'),
+            preview: document.getElementById('previewNote'),
+            container: document.getElementById('notesContainer'),
+            empty: document.getElementById('emptyState'),
+            loader: document.getElementById('authLoader'),
+            count: document.getElementById('charCount'),
+            toast: document.getElementById('toast'),
+            toastMsg: document.getElementById('toastMsg')
+        };
+
+        // --- 1. Authentication ---
+        const initAuth = async () => {
+            try {
+                // Try anonymous auth first.
+                // NOTE: This requires "Anonymous" to be enabled in Firebase Console -> Auth -> Sign-in method
+                await signInAnonymously(auth);
+            } catch (error) {
+                console.error("Auth failed:", error);
+                
+                // --- FALLBACK MECHANISM ---
+                // If Auth isn't set up correctly in the console (or apiKey issue), 
+                // we fall back to a local 'guest' ID so the app still functions.
+                // This requires Firestore rules to be open (Test Mode).
+                
+                // Get or create a persistent guest ID
+                const fallbackId = localStorage.getItem('wall_anon_id') || `guest_${Math.random().toString(36).slice(2, 10)}`;
+                localStorage.setItem('wall_anon_id', fallbackId);
+
+                // Mock the user object
+                currentUser = { uid: fallbackId, isAnonymous: true };
+                
+                // Manually trigger UI ready state
+                els.loader.style.display = 'none';
+                els.addBtn.classList.remove('hidden');
+                
+                // Notify user
+                if (error.code === 'auth/configuration-not-found' || error.code === 'auth/operation-not-allowed') {
+                     showToast("Using Guest Mode (Auth not enabled)", true);
+                } else {
+                     showToast("Connection issue. Using Guest Mode.", true);
+                }
+                
+                // Try to load data anyway
+                subscribeToNotes();
+            }
+        };
+
+        initAuth();
+
+        // Standard listener (only fires if actual Auth succeeds)
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                els.loader.style.display = 'none';
+                els.addBtn.classList.remove('hidden');
+                subscribeToNotes();
+            }
+        });
+
+        // --- 2. Real-time Database ---
+        function subscribeToNotes() {
+            // Using a standard public collection path
+            // For standalone apps not in this previewer, we usually just use 'wishes' collection at root
+            // But to keep it consistent with previewer rules:
+            const path = typeof __app_id !== 'undefined' 
+                ? collection(db, 'artifacts', appId, 'public', 'data', 'wishes') // Previewer path
+                : collection(db, 'wishes'); // GitHub Pages simple path (cleaner)
+
+            // Let's stick to the previewer path structure for now to ensure it works here, 
+            // but for a purely standalone app, you could simplify this. 
+            // We will use the consistent path so it works in both places.
+            const wishesCol = collection(db, 'artifacts', appId, 'public', 'data', 'wishes');
+
+            onSnapshot(wishesCol, (snapshot) => {
+                const wishes = [];
+                snapshot.forEach((doc) => {
+                    wishes.push({ id: doc.id, ...doc.data() });
+                });
+
+                // Check mine
+                const myWish = wishes.find(w => w.id === currentUser.uid);
+                if (myWish) {
+                    userHasWish = true;
+                    els.btnText.innerText = "Edit My Note";
+                    els.input.value = myWish.text;
+                    selectedColor = myWish.color;
+                    updatePreview();
+                } else {
+                    userHasWish = false;
+                    els.btnText.innerText = "Post Note";
+                }
+
+                render(wishes);
+            }, (err) => console.log("Listen error:", err));
+        }
+
+        async function postWish() {
+            const text = els.input.value.trim();
+            if (!text) return;
+
+            els.postBtn.disabled = true;
+            els.postBtn.innerHTML = `<span class="loader w-4 h-4 border-white/50 border-t-white"></span> Posting...`;
+
+            try {
+                // Path must match subscription
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'wishes', currentUser.uid);
+                
+                await setDoc(docRef, {
+                    text: text,
+                    color: selectedColor,
+                    userId: currentUser.uid,
+                    timestamp: serverTimestamp(),
+                    // Keep rotation persistent if it exists, else new random
+                    rotation: Math.random() * 6 - 3 
+                }, { merge: true }); // Merge preserves other fields if we add them later
+
+                toggleModal(false);
+                showToast(userHasWish ? "Note updated!" : "Note posted!");
+            } catch (error) {
+                console.error(error);
+                if (error.code === 'permission-denied') {
+                    showToast("Database Locked. Enable Test Mode rules.", true);
+                } else {
+                    showToast("Error posting. Try again.", true);
+                }
+            } finally {
+                els.postBtn.disabled = false;
+                els.postBtn.innerHTML = `<span>Stick to Wall</span>`;
+            }
+        }
+
+        // --- 3. Rendering ---
+        function render(wishes) {
+            els.container.innerHTML = '';
+            
+            if (wishes.length === 0) {
+                els.empty.classList.remove('hidden');
+                return;
+            }
+            els.empty.classList.add('hidden');
+
+            wishes.forEach(wish => {
+                const isMine = wish.id === currentUser?.uid;
+                const rotation = wish.rotation || (Math.random() * 6 - 3);
+                
+                const div = document.createElement('div');
+                div.className = `sticky-note relative p-6 w-full aspect-square flex flex-col items-center justify-center text-center overflow-hidden cursor-default transition-transform duration-300`;
+                div.style.backgroundColor = wish.color || '#fef3c7';
+                div.style.transform = `rotate(${rotation}deg)`;
+                
+                // Add "My Note" indicator ring
+                if (isMine) {
+                    div.classList.add('ring-4', 'ring-blue-400', 'ring-offset-2', 'ring-offset-gray-800');
+                }
+
+                div.innerHTML = `
+                    <div class="pin"></div>
+                    <p class="handwriting text-2xl md:text-3xl text-gray-800 leading-tight break-words w-full h-full flex items-center justify-center pt-2">
+                        ${escapeHtml(wish.text)}
+                    </p>
+                    ${isMine ? '<div class="absolute bottom-2 bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-sm">You</div>' : ''}
+                `;
+                
+                els.container.appendChild(div);
+            });
+        }
+
+        // --- 4. Utilities ---
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        function showToast(msg, isError = false) {
+            els.toastMsg.innerText = msg;
+            els.toast.classList.remove('translate-y-32');
+            if (isError) els.toast.firstElementChild.innerText = '⚠️';
+            else els.toast.firstElementChild.innerText = '✓';
+            
+            setTimeout(() => els.toast.classList.add('translate-y-32'), 3000);
+        }
+
+        function toggleModal(show) {
+            if (show) {
+                els.modal.classList.remove('hidden');
+                els.input.focus();
+                updatePreview();
+            } else {
+                els.modal.classList.add('hidden');
+            }
+        }
+
+        function updatePreview() {
+            els.preview.style.backgroundColor = selectedColor;
+            
+            els.colors.forEach(btn => {
+                if (btn.dataset.color === selectedColor) {
+                    btn.classList.add('ring-gray-400');
+                    btn.classList.remove('ring-transparent');
+                } else {
+                    btn.classList.remove('ring-gray-400');
+                    btn.classList.add('ring-transparent');
+                }
+            });
+        }
+
+        // --- 5. Event Listeners ---
+        els.addBtn.addEventListener('click', () => toggleModal(true));
+        els.closeModal.addEventListener('click', () => toggleModal(false));
+        els.modal.addEventListener('click', (e) => { if (e.target === els.modal) toggleModal(false); });
+        
+        els.colors.forEach(btn => {
+            btn.addEventListener('click', () => {
+                selectedColor = btn.dataset.color;
+                updatePreview();
+            });
+        });
+
+        els.postBtn.addEventListener('click', postWish);
+        els.input.addEventListener('input', () => {
+            els.count.innerText = els.input.value.length;
+        });
+
+    </script>
+</body>
+</html>
